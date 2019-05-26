@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "dh.h": "c",
+        "math.h": "c",
+        "stat.h": "c"
+    }
+}
