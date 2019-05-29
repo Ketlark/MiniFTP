@@ -7,8 +7,8 @@
 
 struct request {
     int  kind;
-    char path[MAXPATH];
-    int  nbbytes;        /* pour PUT seulement */
+	int  nbbytes;  /* pour PUT seulement */
+    char path[256];
 };
 /* on alignera la taille de la strucuture sur un multiple de 8 octets (pour tea) en controlant * MAXPATH */
 

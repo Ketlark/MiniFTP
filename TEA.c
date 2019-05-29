@@ -29,7 +29,6 @@ int getKey(int sockfd, uint64_t* key, int server) {
     if(server) {
         readData(sockfd, (char*)&dh_infos, sizeof(DHKeyInfos));
         publicNumberOther = dh_infos.publicNumber;
-
         generateKeyFirstStep(server, &privateNumber, &dh_infos.publicNumber, &dh_infos.primeNumber, &dh_infos.primitiveRoot);
     } else {
         generateKeyFirstStep(server, &privateNumber, &dh_infos.publicNumber, &dh_infos.primeNumber, &dh_infos.primitiveRoot);
@@ -39,12 +38,10 @@ int getKey(int sockfd, uint64_t* key, int server) {
     if(server) {
         generateKeySecondStep(key, &privateNumber, &publicNumberOther, &dh_infos.primeNumber);
         sendData(sockfd, (char*)&dh_infos.publicNumber, sizeof(uint64_t));
-        printf("Read other number (client): %ld\n", publicNumberOther);
     }   
     else {
         readData(sockfd, (char*)&publicNumberOther, sizeof(uint64_t));
         generateKeySecondStep(key, &privateNumber, &publicNumberOther, &dh_infos.primeNumber);
-        printf("Read other number (server): %ld\n", publicNumberOther);
     }
 }
 
@@ -57,8 +54,6 @@ int getKeyAsClient(int sockfd, uint64_t* key) {
     key[0] = k1;
     key[1] = k2;
 
-    printf("** Final Key : %lld -- %lld **\n", k1, k2);
-
     return 0;
 }
 
@@ -70,8 +65,6 @@ int getKeyAsServer(int sockfd, uint64_t* key) {
 
     key[0] = k1;
     key[1] = k2;
-
-    printf("** Final Key : %lld -- %lld **\n", k1, k2);
 
     return 0;
 }
@@ -122,6 +115,18 @@ size_t readPadding(uint64_t* block) {
     } else {
         return *block & 0x00000000000000FF;
     }
+}
+
+void encryptData(uint32_t* keyData, uint32_t* datablock, int size, int lastBlock, short endianness) {
+    int padding = 0;
+    if(((float)size / 8) != 0) {
+       // abs((fileStat.st_size % 8) - 8)
+    }
+
+    if(padding > 0) {
+        writePadding((char*)datablock, padding);
+    }
+    encrypt(datablock, keyData);
 }
 
 void encryptFile(int inFD, int outFD, uint32_t* keyData, short endianness) {

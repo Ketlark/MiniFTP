@@ -65,11 +65,12 @@ void sendData(int socketfd, char* buff, uint64_t length) {
     }
 }
 
-void readData(int socketfd, char* buff, uint64_t length) {
-    int result = read(socketfd, buff, length);
+int readData(int socketfd, char* buff, uint64_t length) {
+    int result = recv(socketfd, buff, length, MSG_WAITALL);
 	if(result < 0) {
         perror("Lecture dans le flux socket");
     }
+    return result;
 }
 
 int createClient(int* side, char* adress, socket_infos* infos) { 

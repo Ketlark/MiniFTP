@@ -21,6 +21,6 @@ int createServer(int* side, socket_infos* infos);
 void closeConnection(int socket);
 
 void sendData(int socketfd, char* buff, uint64_t length);
-void readData(int socketfd, char* buff, uint64_t length);
+int readData(int socketfd, char* buff, uint64_t length);
 
 #endif
