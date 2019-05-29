@@ -10,9 +10,71 @@
 #include <math.h>
 #include "Common.h"
 #include <endian.h>
+#include "DH.h"
+#include "TEA.h"
+#include "TCP.h"
 
 #define DELTA 0x9e3779b9  /* a key schedule constant */
 #define BFSIZE 512
+
+int getKey(int sockfd, uint64_t* key, int server) {
+    DHKeyInfos dh_infos;
+    uint64_t privateNumber = 0;
+    uint64_t publicNumberOther = 0; //B 
+    size_t k;
+
+    //Première étape DH :
+    //Le client envoie A, g et p au serveur
+    //Le server reçoie A, g et p et génère B et b
+    if(server) {
+        readData(sockfd, (char*)&dh_infos, sizeof(DHKeyInfos));
+        publicNumberOther = dh_infos.publicNumber;
+
+        generateKeyFirstStep(server, &privateNumber, &dh_infos.publicNumber, &dh_infos.primeNumber, &dh_infos.primitiveRoot);
+    } else {
+        generateKeyFirstStep(server, &privateNumber, &dh_infos.publicNumber, &dh_infos.primeNumber, &dh_infos.primitiveRoot);
+        sendData(sockfd, (char*)&dh_infos, sizeof(DHKeyInfos));
+    }
+
+    if(server) {
+        generateKeySecondStep(key, &privateNumber, &publicNumberOther, &dh_infos.primeNumber);
+        sendData(sockfd, (char*)&dh_infos.publicNumber, sizeof(uint64_t));
+        printf("Read other number (client): %ld\n", publicNumberOther);
+    }   
+    else {
+        readData(sockfd, (char*)&publicNumberOther, sizeof(uint64_t));
+        generateKeySecondStep(key, &privateNumber, &publicNumberOther, &dh_infos.primeNumber);
+        printf("Read other number (server): %ld\n", publicNumberOther);
+    }
+}
+
+int getKeyAsClient(int sockfd, uint64_t* key) {
+    uint64_t k1, k2;
+
+    getKey(sockfd, &k1, 0);
+    getKey(sockfd, &k2, 0);
+
+    key[0] = k1;
+    key[1] = k2;
+
+    printf("** Final Key : %lld -- %lld **\n", k1, k2);
+
+    return 0;
+}
+
+int getKeyAsServer(int sockfd, uint64_t* key) {
+    uint64_t k1, k2;
+
+    getKey(sockfd, &k1, 1);
+    getKey(sockfd, &k2, 1);
+
+    key[0] = k1;
+    key[1] = k2;
+
+    printf("** Final Key : %lld -- %lld **\n", k1, k2);
+
+    return 0;
+}
 
 void decrypt (uint32_t* v, uint32_t* k) {
     uint32_t v0=v[0], v1=v[1], sum= DELTA * 32, i;           /* set up */
@@ -143,7 +205,7 @@ void decryptFile(int inFD, int outFD, uint32_t* keyData, short endianness) {
     }
 }
 
-int main(int argc, char const *argv[]){
+/*int main(int argc, char const *argv[]){
 
     int keyFD, inFD, outFD;
     uint32_t buff[BFSIZE];
@@ -186,6 +248,6 @@ int main(int argc, char const *argv[]){
     encrypt(value, key);
     printf("Mot encrypt : 0x%X\n", value[0]);
     decrypt(value, key);
-    printf("Mot decrypt : 0x%X\n", value[0]);*/
+    printf("Mot decrypt : 0x%X\n", value[0]);
     return 0;
-}
+}*/

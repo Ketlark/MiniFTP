@@ -65,7 +65,15 @@ void sendData(int socketfd, char* buff, uint64_t length) {
     }
 }
 
-void createClient(char* adress) { 
+void readData(int socketfd, char* buff, uint64_t length) {
+    int result = read(socketfd, buff, length);
+	if(result < 0) {
+        perror("Lecture dans le flux socket");
+    }
+}
+
+int createClient(int* side, char* adress, socket_infos* infos) { 
+    *side = 0;
     int sockfd, len; 
     char buff[MAX]; 
 
@@ -109,17 +117,15 @@ void createClient(char* adress) {
   
     int bytesReceived = 0;
     char* buffer = "Bonsoir paris\0";
-    
-    while (1) {
-        sendData(sockfd, buffer, 15);
-    }
+
+    infos->socketfd = sockfd;
+    infos->sockaddr = (SA*)&scksrv;
+    infos->length = sizeof(scksrv);
   
-    // After chatting close the socket 
-    close(sockfd); 
+    return sockfd; 
 } 
 
-
-void createServer() { 
+int createServer(int* side, socket_infos* infos) { 
     int server_fd, session_fd, len, r; 
     char buff[MAX]; 
 
@@ -158,28 +164,13 @@ void createServer() {
     }
   
     len = sizeof(struct sockaddr_storage); 
-  
-    // Accept the data packet from client and verification 
-    session_fd = accept(server_fd, (SA*)&sckclt, &len); 
-    if (session_fd < 0) { 
-        printf("server acccept failed...\n"); 
-        exit(0);  
-    } else {
-        printf("server acccept the client...\n"); 
-    }
-  
-    int bytesReceived = 0;
-    while (1) {
-        bytesReceived = read(session_fd, buff, 100);
-        if(bytesReceived < 0) {
-            perror("Lecture flux serveur");
-        }
 
-        if(bytesReceived > 0) {
-            printf("Message : %s\n", buff);
-        }
-    }
-  
-    // After chatting close the socket 
-    close(server_fd); 
+    infos->sockaddr = (SA*)&sckclt;
+    infos->length = len;
+
+    return server_fd;
 } 
+
+void closeConnection(int socket) {
+    close(socket);
+}

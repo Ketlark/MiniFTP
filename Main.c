@@ -1,45 +1,82 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include "string.h"
 #include "TCP.h"
+#include "TEA.h"
 #include "DH.h"
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 
+int handleConnection(int* sockfd, struct sockaddr* sck, socklen_t* len) {
+    //Le serveur accepte la connexion et prépare le fork
+    int session_fd = accept(*sockfd, sck, len); 
+    if (session_fd < 0) { 
+        printf("server acccept failed...\n"); 
+        exit(0);  
+    } else {
+        printf("server acccept the client...\n"); 
+    }
+
+    return session_fd;
+}
+
+void processRequest() {
+    printf("Process request\n");
+    int bytesReceived = 0;
+
+    /*while (1) {
+        bytesReceived = read(session_fd, buff, 100);
+        if(bytesReceived < 0) {
+            perror("Lecture flux serveur");
+        }
+
+        if(bytesReceived > 0) {
+            printf("Message : %s\n", buff);
+        }
+    }*/
+}
+
 int main(int argc, char *argv[])
 {
-    uint64_t prime = generatePrime();
-	printf("** Global prime - %d\n", prime);
-	int generator = generateBase(prime);
-	printf("** Global primitive root - %d\n\n", generator);
+    socket_infos connectionInfos;
+    uint64_t key[2];
 
-    uint64_t a = rand() % (generator - 1) + 1;
-	uint64_t A = expm(generator, a, prime);
-    printf("** Client Key - %d\n\n", A);
+    memset(key, 0x0, sizeof(uint128_t)); 
+    memset(&connectionInfos, 0x0, sizeof(connectionInfos)); 
 
-    uint64_t b = rand() % (generator - 1) + 1;
-	uint64_t B = expm(generator, b, prime);
-    printf("** Server Key - %d\n\n", B);
-
-    uint64_t K1 = (uint64_t)expm(B, a, prime);
-    uint64_t K2 = (uint64_t)expm(A, b, prime);
-
-    uint64_t key;
-    (&key)[0] = K1;
-    (&key)[1] = K2;
-
-
-    printf("** Shared Key Client - %llx\n\n", K1);
-    printf("** Shared Key Server - %llx\n\n", K2);
-
-    printf("0x%lx%lx", (&key)[0], (&key)[1]);
-    /*if(argc > 1) {
+    int server_socket, side = -1;
+    if(argc > 1) {
         char* adress = argv[1];
-        createClient(adress);
+        createClient(&side, adress, &connectionInfos);
     } else {
-        createServer();
-    }*/
+        server_socket = createServer(&side, &connectionInfos);
+    }
+
+    while(1) {
+        if(side) {
+            while(1) {
+                int session = handleConnection(&server_socket, connectionInfos.sockaddr, &connectionInfos.length);
+                connectionInfos.socketfd = session;
+
+                if(fork()) {
+                    printf("Traitement client : %d\n", session);
+                    getKeyAsServer(connectionInfos.socketfd, key);
+                    fflush(stdout);
+                    sleep(20);
+                }
+
+            }
+        } else {
+            getKeyAsClient(connectionInfos.socketfd, key);
+            printf("** Private Key : %llx **\n", key[0]);
+            break;
+        }
+    }
+
+    closeConnection(connectionInfos.socketfd);
     return 0;
 }
+

@@ -53,7 +53,6 @@ int isPrime(int value, int iteration) {
  * globally between client and server
  */
 uint64_t generatePrime() {
-	printf("* Running Miller-Rabin test to find a large prime number...\n\n");
 	srand(time(NULL));
 	while(1) {
 		uint64_t current_value = rand() % INT_MAX;
@@ -66,7 +65,6 @@ uint64_t generatePrime() {
 
 /* Generate the primitive root by checking for random numbers */
 int generateBase(int p) {
-    printf("* Running test to find a primitive root...\n\n");
 	/* Construct sieve of primes */
 	int sieve[MAXSIZE];
 	memset(sieve, 0, sizeof(sieve));
@@ -101,4 +99,19 @@ int generateBase(int p) {
 		if (flag) 
 			return a;
 	}
+}
+
+void generateKeyFirstStep(int server, uint64_t* privateNumber, uint64_t* publicNumber, uint64_t* primeNumber, uint64_t* primitiveRoot) {
+    if(!server) {
+		*primeNumber = generatePrime();
+    	*primitiveRoot = generateBase(*primeNumber);
+
+	}
+
+    *privateNumber = rand() % (*primitiveRoot - 1) + 1;
+	*publicNumber = expm(*primitiveRoot, *privateNumber, *primeNumber);
+}
+
+void generateKeySecondStep(uint64_t* key, uint64_t* privateNumber, uint64_t* publicNumberOther, uint64_t* primeNumber) {
+	*key = expm(*publicNumberOther, *privateNumber, *primeNumber);
 }
