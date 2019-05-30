@@ -24,12 +24,20 @@ int handleConnection(int* sockfd, struct sockaddr* sck, socklen_t* len) {
     return session_fd;
 }
 
-int handleRequest(socket_infos* connectionInfos, struct request* request) {
-    int bytesReceived = read(connectionInfos->socketfd, (char*)request, 1024);
+int handleRequest(uint32_t* keyData, socket_infos* connectionInfos, struct request* request) {
+    char bufferRequest[1024];
+    uint64_t* data = malloc(1024);
+
+    int bytesReceived = read(connectionInfos->socketfd, (char*)data, 1024);
     printf("Size of request received : %d\n", bytesReceived);
+    for (size_t i = 0; i < getBlocksCountFromSize(bytesReceived) - 1; i++) {
+        decryptData(keyData, (uint32_t*)&data[i], 1, 0, 0);
+    }
+
+    *request = *(struct request*)data;
 }
 
-void sendPutRequest(socket_infos* connectionInfos, struct request* request, char* fileName, char* distName) {
+void sendPutRequest(uint32_t* keyData, socket_infos* connectionInfos, struct request* request, char* fileName, char* distName) {
     int file_fd;
     char bufferRequest[1024];
     int requestSize = -1;
@@ -45,16 +53,15 @@ void sendPutRequest(socket_infos* connectionInfos, struct request* request, char
     strncpy (request->path, distName, strlen(distName));
 
     requestSize = sizeof(request->kind) + strlen(distName) + sizeof(request->nbbytes);
+    int requestWithPadding = requestSize + (8 - (requestSize % 8));
 
-    uint32_t* data = malloc(requestSize) + abs((requestSize % 8) - 8);
-    //(uint32_t*)request;
-    for (size_t i = 0; i < getBlocksCountFromSize(requestSize) * 2; i++) {
-       // encryptRequest(0, data, )
+    uint64_t* data = malloc(requestWithPadding);
+    data = (uint64_t*)request;
+    for (size_t i = 0; i < getBlocksCountFromSize(requestWithPadding) - 1; i++) {
+        encryptData(keyData, (uint32_t*)&data[i], 1, 0, 0);
     }
 
-    printf("Size base : %d -- Size padding : %d", requestSize, requestSize + (8 - (requestSize % 8)));
-
-    write(connectionInfos->socketfd, (char*)request, requestSize);
+    write(connectionInfos->socketfd, (char*)data, requestWithPadding);
 }
 
 void processRequest() {
@@ -120,9 +127,10 @@ int main(int argc, char *argv[])
 
                     //RECV
                     struct request request;
-                    handleRequest(&connectionInfos, &request);
-                    printf("Chemin : %d\n", request.path);
-                    printf("** Informations requete : \nType : %d\nChemin : %s\nPoids : %d", request.kind, request.path, request.nbbytes);
+                    handleRequest((uint32_t*)key, &connectionInfos, &request);
+                   
+                    printf("type : %d\n", request.kind);
+                    printf("chemin : %s\n", request.path);
 
                     fflush(stdout);
                     sleep(20);
@@ -137,7 +145,7 @@ int main(int argc, char *argv[])
                 switch (typeRequest) {
                     case REQUEST_PUT: {
                         printf("sending put \n");
-                        sendPutRequest(&connectionInfos, &request, argv[3], argv[4]);
+                        sendPutRequest((uint32_t*)key, &connectionInfos, &request, argv[3], argv[4]);
                         break;
                     }
                 }

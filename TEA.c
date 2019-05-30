@@ -129,6 +129,10 @@ void encryptData(uint32_t* keyData, uint32_t* datablock, int size, int lastBlock
     encrypt(datablock, keyData);
 }
 
+void decryptData(uint32_t* keyData, uint32_t* datablock, int size, int lastBlock, short endianness) {
+    decrypt(datablock, keyData);
+}
+
 void encryptFile(int inFD, int outFD, uint32_t* keyData, short endianness) {
     uint32_t datablock[2];
     int bytesReaded = 0;
