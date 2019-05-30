@@ -109,21 +109,28 @@ void writePadding(char* block, size_t padding) {
     }
 }
 
+void deletePadding(char* block, size_t padding) {
+    int sizeFinalBlock = 8 - padding;
+    char finalBlock[sizeFinalBlock];
+    memset(finalBlock, 0x0, sizeFinalBlock);
+
+    for (size_t i = 0; i < sizeFinalBlock; i++) {
+        finalBlock[i] = block[i];
+    }
+
+    block = finalBlock;
+}
+
 size_t readPadding(uint64_t* block) {
     if(isBigEndian() == 0) {
-        return htobe64(*block) & 0x00000000000000FF;
+        return be64toh(*block) & 0x00000000000000FF;
     } else {
         return *block & 0x00000000000000FF;
     }
 }
 
-void encryptData(uint32_t* keyData, uint32_t* datablock, int size, int lastBlock, short endianness) {
-    int padding = 0;
-    if(((float)size / 8) != 0) {
-       // abs((fileStat.st_size % 8) - 8)
-    }
-
-    if(padding > 0) {
+void encryptData(uint32_t* keyData, uint32_t* datablock, int padding, int lastBlock, short endianness) {
+    if(lastBlock > 0) {
         writePadding((char*)datablock, padding);
     }
     encrypt(datablock, keyData);
@@ -131,6 +138,10 @@ void encryptData(uint32_t* keyData, uint32_t* datablock, int size, int lastBlock
 
 void decryptData(uint32_t* keyData, uint32_t* datablock, int size, int lastBlock, short endianness) {
     decrypt(datablock, keyData);
+    if(lastBlock > 0) {
+        int padding = readPadding((uint64_t*)datablock);
+        deletePadding((char*)datablock, padding);
+    }
 }
 
 void encryptFile(int inFD, int outFD, uint32_t* keyData, short endianness) {
