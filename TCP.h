@@ -1,14 +1,8 @@
 #include <sys/socket.h>
+#include <stdint.h>
 
 #ifndef TCP_H_   /* Include guard */
 #define TCP_H_
-
-typedef struct tcp_data {
-    int socketfd;
-    struct sockaddr* scksrv;
-    socklen_t lenght;
-    int maximumBuffer;
-} tcp_data;
 
 typedef struct socket_infos {
     int socketfd;

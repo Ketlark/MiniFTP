@@ -56,14 +56,13 @@ int main(int argc, char *argv[])
                 if(fork()) {
                     printf("Traitement client : %d\n", session);
                     getKeyAsServer(connectionInfos.socketfd, key);
-                    printf("** Private Key : %llx%llx **\n", key[0], key[1]);
+                    printf("\n** Private Key : %llx%llx **\n", key[0], key[1]);
 
                     //RECV
                     struct request request;
                     handleRequest((uint32_t*)key, &connectionInfos, &request);
 
                     fflush(stdout);
-                    sleep(20);
                 }
 
             }
@@ -74,24 +73,18 @@ int main(int argc, char *argv[])
             if(typeRequest != -1) {
                 switch (typeRequest) {
                     case REQUEST_PUT: {
-                        printf("sending put : %d\n", typeRequest);
+                        printf("\nSending put : %d\n\n", typeRequest);
                         sendRequest((uint32_t*)key, &connectionInfos, typeRequest, &request, argv[3], argv[4]);
-                        handleAnswer((uint32_t*)key, &connectionInfos, &answer);
+                        handleAnswer((uint32_t*)key, &connectionInfos, typeRequest, &answer, argv[3]);
 
-                        printf("Réponse serveur : \n");
-                        printf("Type : %d\n", answer.ack);
-                        printf("Taille : %d\n", answer.nbbytes);
                         break;
                     }
 
                     case REQUEST_GET: {
-                        printf("sending get : %d\n", typeRequest);
+                        printf("\nSending get : %d\n\n", typeRequest);
                         sendRequest((uint32_t*)key, &connectionInfos, typeRequest, &request, argv[4], argv[3]);
-                        handleAnswer((uint32_t*)key, &connectionInfos, &answer);
+                        handleAnswer((uint32_t*)key, &connectionInfos, typeRequest, &answer, argv[4]);
 
-                        printf("Réponse serveur : \n");
-                        printf("Type : %d\n", answer.ack);
-                        printf("Taille : %d\n", answer.nbbytes);
                         break;
                     }
                 }

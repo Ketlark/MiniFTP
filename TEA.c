@@ -122,11 +122,7 @@ void deletePadding(char* block, size_t padding) {
 }
 
 size_t readPadding(uint64_t* block) {
-    if(isBigEndian() == 0) {
-        return be64toh(*block) & 0x00000000000000FF;
-    } else {
-        return *block & 0x00000000000000FF;
-    }
+    return be64toh(*block) & 0x00000000000000FF;
 }
 
 void encryptData(uint32_t* keyData, uint32_t* datablock, int padding, int lastBlock, short endianness) {
@@ -140,134 +136,7 @@ void decryptData(uint32_t* keyData, uint32_t* datablock, int size, int lastBlock
     decrypt(datablock, keyData);
     if(lastBlock > 0) {
         int padding = readPadding((uint64_t*)datablock);
+        printf("Padding decrypt : %d\n", padding);
         deletePadding((char*)datablock, padding);
     }
 }
-
-void encryptFile(int inFD, int outFD, uint32_t* keyData, short endianness) {
-    uint32_t datablock[2];
-    int bytesReaded = 0;
-    int offsetBlock = 0;
-
-    struct stat fileStat;
-    if(fstat(inFD, &fileStat) < 0) {
-        printf("Impossible de lire les informations du fichier");
-        exit(5);
-    }
-
-    while(1) {
-        memset(datablock, 0x0, sizeof(uint64_t));
-        bytesReaded = read(inFD, datablock, sizeof(uint64_t));
-
-        if(bytesReaded == 0){
-            break; //EOF
-        }
-
-        if(offsetBlock >= fileStat.st_size / 8) {
-            if(((float)fileStat.st_size / 8) != 0) {
-                writePadding((char*)datablock, abs((fileStat.st_size % 8) - 8));
-            }
-        }
-
-
-        encrypt(datablock, keyData);
-
-        if(write(outFD, datablock, sizeof(uint64_t)) ==-1) {
-             perror("write");
-             exit(2);
-        }
-
-        offsetBlock++;
-    }
-}
-
-void decryptFile(int inFD, int outFD, uint32_t* keyData, short endianness) {
-    uint32_t datablock[2];
-    int bytesReaded = 0;
-
-    struct stat fileStat;
-    if(fstat(inFD, &fileStat) < 0) {
-        printf("Impossible de lire les informations du fichier");
-        exit(5);
-    }
-
-    int offsetBlock = 1;
-    int padding = 0;
-
-    while(1) {
-        memset(datablock, 0x0, sizeof(u_int64_t));
-
-        bytesReaded = read(inFD, datablock, sizeof(uint64_t));
-
-        if(bytesReaded == 0){
-            break; //EOF
-        }
-
-        /* On check si les données ont un byte order spécifique */
-        if(isBigEndian() == 1 && endianness == 0) {
-            *datablock = htobe64((uint64_t)datablock);
-        } else if (isBigEndian() == 0 && endianness == 1) {
-            *datablock = be64toh((uint64_t)datablock);
-        }
-
-        decrypt(datablock, keyData);
-
-        if(offsetBlock >= fileStat.st_size / 8) {
-            padding = readPadding((uint64_t*)datablock);
-        }
-
-        if(write(outFD, datablock, sizeof(uint64_t) - padding) ==-1) {
-            perror("write");
-            exit(2);
-        }    
-    
-        offsetBlock++;
-    }
-}
-
-/*int main(int argc, char const *argv[]){
-
-    int keyFD, inFD, outFD;
-    uint32_t buff[BFSIZE];
-    uint32_t buffBlocks[BFSIZE];
-
-    uint32_t keyData[4];
-    if(argc < 2) {
-        printf("Usage : %s -e|-d <clé> <fichier_in> <fichier_out>");
-        exit(1);
-    }
-
-    printf("Big Endiann : %d\n", isBigEndian());
-
-    bzero(&buff, BUFSIZ);
-
-    keyFD = open(argv[2], O_RDONLY);
-    inFD = open(argv[3], O_RDWR);
-    outFD = open(argv[4], O_CREAT|O_RDWR);
-
-    for (int keyOff = 0 ; read(keyFD, &buff[keyOff], sizeof(uint32_t)) > 0; keyOff++) {
-        keyData[keyOff] = buff[keyOff];
-        printf("%llX\n", buff[keyOff]);
-    }
-
-    if(!strcmp(argv[1], "-d")) {
-        decryptFile(inFD, outFD, keyData, isBigEndian());
-        printf("dec");
-    } else if(!strcmp(argv[1], "-e")) {
-        encryptFile(inFD, outFD, keyData, isBigEndian());
-        printf("enc");
-    }
-
-    close(inFD);
-    close(outFD);
-
-
-   /* uint32_t value[2] = {0x426f6e6a, 0x6f757200};
-    uint32_t key[4]= {0x8922FFFF, 0x8922FFFF, 0x8922FFFF, 0x8922FFFF};
-    printf("Mot : 0x%X\n", value[0]);
-    encrypt(value, key);
-    printf("Mot encrypt : 0x%X\n", value[0]);
-    decrypt(value, key);
-    printf("Mot decrypt : 0x%X\n", value[0]);
-    return 0;
-}*/
