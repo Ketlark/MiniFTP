@@ -25,15 +25,20 @@ int main(int argc, char *argv[])
     memset(&connectionInfos, 0x0, sizeof(connectionInfos)); 
 
     int server_socket, side = -1;
-    if(argc > 4) {
+    if(argc == 4) {
         char* adress = argv[1];
+        printf("%s", argv[2]);
+        if(strcmp(argv[2], "dir") == 0) {
+            typeRequest = REQUEST_DIR;
+        }
 
+        createClient(&side, adress, &connectionInfos);
+    } else if(argc > 4) {
+        char* adress = argv[1];
         if(strcmp(argv[2], "get") == 0) {
             typeRequest = REQUEST_GET;
         } else if(strcmp(argv[2], "put") == 0) {
             typeRequest = REQUEST_PUT;
-        } else if(strcmp(argv[2], "dir") == 0) {
-            typeRequest = REQUEST_DIR;
         } else {
             fprintf(stderr, "Argument de requête mal formulé : (put, get ou dir)\n");
             exit(1);
@@ -44,6 +49,7 @@ int main(int argc, char *argv[])
     } else if(argc < 2) {
         server_socket = createServer(&side, &connectionInfos);
     } else {
+        fprintf(stderr, "Vous devez spécifier le fichier distant et local\n");
         exit(2);
     }
 
@@ -82,6 +88,14 @@ int main(int argc, char *argv[])
 
                     case REQUEST_GET: {
                         printf("\nSending get : %d\n\n", typeRequest);
+                        sendRequest((uint32_t*)key, &connectionInfos, typeRequest, &request, argv[4], argv[3]);
+                        handleAnswer((uint32_t*)key, &connectionInfos, typeRequest, &answer, argv[4]);
+
+                        break;
+                    }
+
+                    case REQUEST_DIR: {
+                        printf("\nSending dir : %d\n\n", typeRequest);
                         sendRequest((uint32_t*)key, &connectionInfos, typeRequest, &request, argv[4], argv[3]);
                         handleAnswer((uint32_t*)key, &connectionInfos, typeRequest, &answer, argv[4]);
 

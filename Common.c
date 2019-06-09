@@ -1,8 +1,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <arpa/inet.h>
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -34,6 +32,22 @@ int handleConnection(int* sockfd, struct sockaddr* sck, socklen_t* len) {
     }
 
     return session_fd;
+}
+
+void handleError(struct answer* answer) {
+    
+}
+
+void sendList(uint32_t* keyData, socket_infos* connectionInfos, char* path) {
+    FILE* fp;
+    fp = popen("ls","r");
+    fclose(fp);
+
+    execl("/bin/ls", "ls", "-l", path);
+}
+
+void getList(uint32_t* keyData, socket_infos* connectionInfos) {
+    printf("List get !!!!\n");
 }
 
 int getFile(uint32_t* keyData, socket_infos* connectionInfos, int file_fd, int size, int padding) {
@@ -156,6 +170,18 @@ int handleRequest(uint32_t* keyData, socket_infos* connectionInfos, struct reque
         printf("padding : %d\n", answer._pad[0]);
 
         getFile(keyData, connectionInfos, file_fd, request->nbbytes, abs((request->nbbytes % 8) - 8));
+    } else if (request->kind == REQUEST_DIR) {
+        answer.ack = ANSWER_OK;
+        answer.errnum = 0;
+        answer.nbbytes = 0;
+        answer._pad[0] = 0;
+
+        sendAnswer(keyData, connectionInfos, request->kind, answer);
+        printf("\n*** Answer sended \n");
+        printf("size : %d\n", answer.nbbytes);
+        printf("padding : %d\n", answer._pad[0]);
+
+        sendList(keyData, connectionInfos, request->path);
     }
 
     free(data);
@@ -209,6 +235,9 @@ int handleAnswer(uint32_t* keyData, socket_infos* connectionInfos, int typeReque
         }
 
         getFile(keyData, connectionInfos, file_fd, answer->nbbytes, answer->_pad[0]);
+    } else if(typeRequest == REQUEST_DIR) {
+        printf("\nDirectory answer received\n");
+        getList(keyData, connectionInfos);
     }
 }
 

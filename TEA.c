@@ -1,18 +1,13 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <string.h>
 #include <sys/stat.h> 
 #include <math.h>
-#include "Common.h"
 #include <endian.h>
 #include "DH.h"
 #include "TEA.h"
 #include "TCP.h"
+#include "Common.h"
 
 #define DELTA 0x9e3779b9  /* a key schedule constant */
 #define BFSIZE 512
