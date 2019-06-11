@@ -112,11 +112,7 @@ int handleRequest(uint32_t* keyData, socket_infos* connectionInfos, struct reque
     int bytesReceived = read(connectionInfos->socketfd, (char*)data, 1024);
     printf("Size of request received : %d\n", bytesReceived);
     for (size_t i = 0; i < getBlocksCountFromSize(bytesReceived) - 1; i++) {
-        if(i + 1 >= getBlocksCountFromSize(bytesReceived) - 1) {
-            decryptData(keyData, (uint32_t*)&data[i], 0, 1, 0);
-        } else {
-            decryptData(keyData, (uint32_t*)&data[i], 0, 0, 0);
-        }
+        decryptData(keyData, (uint32_t*)&data[i], 0, 0, 0);
     }
 
     *request = *(struct request*)data;
@@ -195,7 +191,7 @@ int handleAnswer(uint32_t* keyData, socket_infos* connectionInfos, int typeReque
 
     for (size_t i = 0; i < getBlocksCountFromSize(bytesReceived) - 1; i++) {
         if(i + 1 >= getBlocksCountFromSize(bytesReceived) - 1) {
-            decryptData(keyData, (uint32_t*)&data[i], 0, 1, 0);
+            decryptData(keyData, (uint32_t*)&data[i], 0, 0, 0);
         } else {
             decryptData(keyData, (uint32_t*)&data[i], 0, 0, 0);
         }
@@ -264,7 +260,7 @@ void sendRequest(uint32_t* keyData, socket_infos* connectionInfos, int type, str
         request->nbbytes = fileStat.st_size;
     }
 
-    strncpy(request->path, distName, strlen(distName));
+    snprintf(request->path, strlen(distName) + 1, distName);
 
     requestSize = sizeof(request->kind) + strlen(distName) + sizeof(request->nbbytes);
     int requestWithPadding = requestSize + (8 - (requestSize % 8));
@@ -272,11 +268,7 @@ void sendRequest(uint32_t* keyData, socket_infos* connectionInfos, int type, str
     uint64_t* data = (uint64_t*) malloc(requestWithPadding);
     data = (uint64_t*)request;
     for (size_t i = 0; i < getBlocksCountFromSize(requestWithPadding) - 1; i++) {
-        if(i+1 >= getBlocksCountFromSize(requestWithPadding) - 1) {
-            encryptData(keyData, (uint32_t*)&data[i], 8 - (requestSize % 8), 1, 0);
-        } else {
-            encryptData(keyData, (uint32_t*)&data[i], 0, 0, 0);
-        }
+        encryptData(keyData, (uint32_t*)&data[i], 0, 0, 0);
     }
 
     int sended = write(connectionInfos->socketfd, (char*)data, requestWithPadding);
