@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <sys/ioctl.h>
+#include <sys/wait.h>
 #include "Common.h"
 #include "TCP.h"
 #include "TEA.h"
@@ -38,11 +40,13 @@ void handleError(struct answer* answer) {
     
 }
 
-void sendList(uint32_t* keyData, socket_infos* connectionInfos, int pipefd) {
+void sendList(uint32_t* keyData, socket_infos* connectionInfos, int pipefd, int size, int padding) {
     uint32_t datablock[2];
     int blockReaded = 0;
 
-    while(1) {
+    printf("Blocks to receive : %d\n", getBlocksCountFromSize(size) + 1);
+    for (size_t i = 0; i < getBlocksCountFromSize(size) + 1; i++){
+
         blockReaded = read(pipefd, datablock, sizeof(uint64_t));
         encryptData(keyData, datablock, 0, 0, 0);
         if(blockReaded == 0) {
@@ -58,26 +62,34 @@ void sendList(uint32_t* keyData, socket_infos* connectionInfos, int pipefd) {
     close(pipefd);
 }
 
-void getList(uint32_t* keyData, socket_infos* connectionInfos) {
+void getList(uint32_t* keyData, socket_infos* connectionInfos, int size, int padding) {
     uint32_t datablock[2];
     int bytesReceived = 0;
-    int flags = fcntl(connectionInfos->socketfd, F_GETFL, 0);
 
-    while(1) {
+    printf("Blocks to receive : %d\n", getBlocksCountFromSize(size) + 1);
+    for (size_t i = 0; i < getBlocksCountFromSize(size) + 1; i++){
+
         bytesReceived = recv(connectionInfos->socketfd, datablock, sizeof(uint64_t), MSG_WAITALL);
 
         if(bytesReceived < 8) {
             break; //EOF
         }
 
-        decryptData(keyData, datablock, 0, 0, 0);
-        if(write(1, (char*)datablock, sizeof(uint64_t)) < 0) {
-            perror("write stdout");
-            exit(2);
+        if(i + 1 >= getBlocksCountFromSize(size) + 1) {
+            decryptData(keyData, datablock, 0, 0, 0);
+            if(write(1, (char*)datablock, sizeof(uint64_t) - padding) < 0) {
+                perror("write");
+                exit(2);
+            }  
+        } else {
+            decryptData(keyData, datablock, 0, 0, 0);
+            if(write(1, (char*)datablock, sizeof(uint64_t)) < 0) {
+                perror("write");
+                exit(2);
+            }  
         }
-        fflush(stdout);
 
-        fcntl(connectionInfos->socketfd, F_SETFL, flags | O_NONBLOCK);
+        fflush(stdout);
     }
 }
 
@@ -202,32 +214,42 @@ void handleRequest(uint32_t* keyData, socket_infos* connectionInfos, struct requ
         answer.nbbytes = 0;
         answer._pad[0] = 0;
 
-
         if(open(request->path, O_RDONLY) < 0) {
             printf("Path argument for ls is wrong\n");
             answer.ack = ANSWER_ERROR;
             answer.errnum = errno;
         }
-
-        sendAnswer(keyData, connectionInfos, request->kind, answer);
-        printf("\n*** Answer sended \n");
-        printf("size : %d\n", answer.nbbytes);
-        printf("padding : %d\n", answer._pad[0]);
     
         int pipefd[2];
+        int pid;
+        int sizePipe = 0;
+
         pipe(pipefd);
-        if (fork() == 0) {
-            close(pipefd[0]);    // close reading end in the child
+        if ((pid = fork()) == 0) {
 
             dup2(pipefd[1], 1);  // send stdout to the pipe
+            close(pipefd[0]);    // close reading end in the child
             close(pipefd[1]); 
 
             execl("/bin/ls", "ls", "-l", request->path);
         } else {
             close(pipefd[1]);
+
+            int status;
+            waitpid(pid, &status, 0);
+            int err = ioctl(pipefd[0], FIONREAD, &sizePipe);
         }
 
-        if(answer.ack == ANSWER_OK) sendList(keyData, connectionInfos, pipefd[0]);
+        printf("\nSize of 'ls -l' : %d\n", sizePipe);
+        answer.nbbytes = sizePipe;
+        answer._pad[0] = abs((sizePipe % 8) - 8);
+
+        sendAnswer(keyData, connectionInfos, request->kind, answer);
+        printf("\n*** Answer sended \n");
+        printf("size : %d\n", answer.nbbytes);
+        printf("padding : %d\n", answer._pad[0]);
+
+        if(answer.ack == ANSWER_OK) sendList(keyData, connectionInfos, pipefd[0], answer.nbbytes, answer._pad[0]);
 
     } else {
         printf("\nBit strange request, aborting ..");
@@ -302,7 +324,7 @@ void handleAnswer(uint32_t* keyData, socket_infos* connectionInfos, int typeRequ
         getFile(keyData, connectionInfos, file_fd, answer->nbbytes, answer->_pad[0]);
     } else if(typeRequest == REQUEST_DIR) {
         printf("\nDirectory answer received\n");
-        getList(keyData, connectionInfos);
+        getList(keyData, connectionInfos, answer->nbbytes, answer->_pad[0]);
     }
 }
 
