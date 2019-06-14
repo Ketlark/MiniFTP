@@ -10,10 +10,10 @@ int isBigEndian();
 
 int handleConnection(int* sockfd, struct sockaddr* sck, socklen_t* len);
 
-int handleRequest(uint32_t* keyData, socket_infos* connectionInfos, struct request* request);
+void handleRequest(uint32_t* keyData, socket_infos* connectionInfos, struct request* request);
 void sendRequest(uint32_t* keyData, socket_infos* connectionInfos, int type, struct request* request, char* fileName, char* distName);
 
-int handleAnswer(uint32_t* keyData, socket_infos* connectionInfos, int typeRequest, struct answer* answer, char* fileName);
+void handleAnswer(uint32_t* keyData, socket_infos* connectionInfos, int typeRequest, struct answer* answer, char* fileName);
 void sendAnswer(uint32_t* keyData, socket_infos* connectionInfos, int typeRequest, struct answer answer);
 
 #endif // COMMON_H_

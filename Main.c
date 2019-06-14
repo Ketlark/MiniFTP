@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/wait.h>
 #include "TCP.h"
 #include "TEA.h"
 #include "DH.h"
@@ -27,7 +28,7 @@ int main(int argc, char *argv[])
     int server_socket, side = -1;
     if(argc == 4) {
         char* adress = argv[1];
-        printf("%s", argv[2]);
+
         if(strcmp(argv[2], "dir") == 0) {
             typeRequest = REQUEST_DIR;
         }
@@ -49,9 +50,11 @@ int main(int argc, char *argv[])
     } else if(argc < 2) {
         server_socket = createServer(&side, &connectionInfos);
     } else {
-        fprintf(stderr, "Vous devez spécifier le fichier distant et local\n");
+        fprintf(stderr, "Vous devez spécifier le fichier distant et/ou local\n");
         exit(2);
     }
+
+    int pid;
 
     while(1) {
         if(side) {
@@ -59,7 +62,8 @@ int main(int argc, char *argv[])
                 int session = handleConnection(&server_socket, connectionInfos.sockaddr, &connectionInfos.length);
                 connectionInfos.socketfd = session;
 
-                if(fork()) {
+                pid = fork();
+                if(pid == 0) {
                     printf("Traitement client : %d\n", session);
                     getKeyAsServer(connectionInfos.socketfd, key);
                     printf("\n** Private Key : %llx%llx **\n", key[0], key[1]);
@@ -69,8 +73,10 @@ int main(int argc, char *argv[])
                     handleRequest((uint32_t*)key, &connectionInfos, &request);
 
                     fflush(stdout);
+                } else {
+                    int status;
+                    waitpid(pid, &status, 0);
                 }
-
             }
         } else {
             getKeyAsClient(connectionInfos.socketfd, key);
