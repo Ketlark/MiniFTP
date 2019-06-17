@@ -36,10 +36,10 @@ Common.o : Common.c Common.h
 #executables
 
 miniftp : $(OFILES)
-	$(CC) -o $(NAME_EXE_CLT) $(OFILES)
+	$(CC) -o $(NAME_EXE_CLT) $(OFILES) -lm
 
 miniftpd : $(OFILES)
-	$(CC) -o $(NAME_EXE_SRV) $(OFILES)
+	$(CC) -o $(NAME_EXE_SRV) $(OFILES) -lm
 
 clean : 
 	rm -f miniftp
