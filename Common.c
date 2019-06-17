@@ -358,7 +358,7 @@ void sendRequest(uint32_t* keyData, socket_infos* connectionInfos, int type, str
 
     uint64_t* data = (uint64_t*) malloc(requestWithPadding);
     data = (uint64_t*)request;
-    for (size_t i = 0; i < getBlocksCountFromSize(requestWithPadding) - 1; i++) {
+    for (size_t i = 0; i < getBlocksCountFromSize(requestSize) - 1; i++) {
         encryptData(keyData, (uint32_t*)&data[i], 0, 0, 0);
     }
 
