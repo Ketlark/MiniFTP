@@ -1,12 +1,45 @@
 CC = gcc
 FLAGS = -o
+CFLAGS = -c
 
-EXE = miniftp
+NAME_EXE_CLT = miniftp
+NAME_EXE_SRV = miniftpd
+EXE = miniftp miniftpd
 
-all : clean $(EXE)
+OFILES = TEA.o \
+		 DH.o \
+		 Main.o \
+		 TCP.o \
+		 Common.o \
 
-miniftp :
-	$(CC) $(FLAGS) $(EXE) -fstack-protector Main.c TCP.c TEA.c DH.c Common.c Request.h -lm
+
+all : $(EXE)
+
+#O Files
+
+DH.o : DH.c DH.h
+	$(CC) -c DH.c -o DH.o
+
+TEA.o : TEA.c TEA.h
+	$(CC) -c TEA.c -o TEA.o
+
+Main.o : Main.c 
+	$(CC) -c Main.c -o Main.o
+
+TCP.o : TCP.c TCP.h
+	$(CC) -c TCP.c -o TCP.o
+
+Common.o : Common.c Common.h
+	$(CC) -c Common.c -o Common.o
+
+
+#executables
+
+miniftp : $(OFILES)
+	$(CC) -o $(NAME_EXE_CLT) $(OFILES)
+
+miniftpd : $(OFILES)
+	$(CC) -o $(NAME_EXE_SRV) $(OFILES)
 
 clean : 
 	rm -f miniftp
